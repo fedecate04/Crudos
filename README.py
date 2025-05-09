@@ -5,6 +5,7 @@ import pandas as pd
 import numpy as np
 from fpdf import FPDF
 from io import BytesIO
+pip install fpdf
 
 # CONFIGURACION GENERAL
 st.set_page_config(page_title="BLABO Balance Pro", layout="wide")
