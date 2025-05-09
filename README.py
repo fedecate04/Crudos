@@ -1,10 +1,9 @@
 # BLABO BALANCE PRO - APP EN STREAMLIT PARA TESIS FINALBLABO BALANCE PRO - APP EN STREAMLIT PARA TESIS FINAL
 
 import streamlit
-as st import pandas 
-as pd import numpy 
-as np from io 
-import BytesIO
+import pandas 
+import numpy 
+from io import BytesIO
 
 #CONFIGURACION GENERAL
 
