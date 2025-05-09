@@ -1,103 +1,46 @@
-# BLABO BALANCE PRO - APP EN STREAMLIT PARA TESIS FINAL
+LTS LAB ANALYZER COMPLETO - Con campos adicionales "Muestreo en" y "Muestra tomada por"
 
-import streamlit as st
-import pandas as pd
-import numpy as np
-from io import BytesIO
+import streamlit as st import pandas as pd from fpdf import FPDF from datetime import datetime from io import BytesIO import os import base64 from pathlib import Path
 
-# CONFIGURACION GENERAL
-st.set_page_config(page_title="BLABO Balance Pro", layout="wide")
-st.title("🛢️ BLABO Balance Pro - Simulador Técnico de Limpieza de Tanques")
+Función para limpiar caracteres incompatibles
 
-# INTRODUCCION
-with st.expander("📘 Introducción al Sistema BLABO", expanded=True):
-    st.markdown("""
-El sistema BLABO® permite la limpieza automatizada de tanques de almacenamiento de crudo sin ingreso de personal,
-recuperando hidrocarburos, removiendo lodo parafínico y separando agua y sólidos.
+def limpiar_pdf_texto(texto): reemplazos = { "₀": "0", "₁": "1", "₂": "2", "₃": "3", "₄": "4", "₅": "5", "₆": "6", "₇": "7", "₈": "8", "₉": "9", "⁰": "0", "¹": "1", "²": "2", "³": "3", "°": " grados ", "º": "", "“": '"', "”": '"', "‘": "'", "’": "'", "–": "-", "—": "-", "•": "-", "→": "->", "←": "<-", "⇒": "=>", "≠": "!=", "≥": ">=", "≤": "<=", "✓": "OK", "✅": "OK", "❌": "NO" } for k, v in reemplazos.items(): texto = texto.replace(k, v) return texto
 
-Esta aplicación simula el balance de masa y energía de cada módulo del sistema, con visualización de fórmulas
-y generación automática de un informe al finalizar.
-""")
+Configuración general
 
-# ENTRADA DE DATOS
-st.sidebar.header("🔧 Parámetros de Entrada")
-with st.sidebar.form("input_form"):
-    V_tanque = st.number_input("Capacidad del tanque (m³)", value=10000)
-    H_lodo = st.number_input("Altura del lodo (m)", value=4.0)
-    densidad_lodo = st.number_input("Densidad del lodo (kg/m³)", value=950)
-    HC_pct = st.slider("% Hidrocarburos", 0, 100, 70)
-    agua_pct = st.slider("% Agua", 0, 100, 15)
-    sol_inorg_pct = st.slider("% Sólidos inorgánicos", 0, 100, 10)
-    sol_org_pct = st.slider("% Sólidos orgánicos", 0, 100, 5)
-    temp_ini = st.number_input("Temperatura inicial (°C)", value=20)
-    temp_fin = st.number_input("Temperatura objetivo (°C)", value=80)
-    caudal_recirc = st.number_input("Caudal de recirculación (m³/h)", value=100)
-    submit = st.form_submit_button("Calcular")
+st.set_page_config(page_title="LTS Lab Analyzer", layout="wide") LOGO_PATH = "logopetrogas.png"
 
-if submit:
-    # CALCULOS BASE
-    volumen_lodo = V_tanque  # altura cancelada
-    masa_total = volumen_lodo * densidad_lodo
+Estilo visual
 
-    masas = {
-        "Hidrocarburos": masa_total * HC_pct / 100,
-        "Agua": masa_total * agua_pct / 100,
-        "Sólidos inorgánicos": masa_total * sol_inorg_pct / 100,
-        "Sólidos orgánicos": masa_total * sol_org_pct / 100
-    }
+st.markdown(""" <style> .stApp { background-color: #1e1e1e; color: white; } .stButton>button, .stDownloadButton>button { background-color: #0d6efd; color: white; border-radius: 8px; border: none; } input, textarea, .stTextInput, .stTextArea, .stNumberInput input { background-color: #2e2e2e !important; color: white !important; border: 1px solid #555 !important; } .stSelectbox div { background-color: #2e2e2e !important; color: white !important; } </style> """, unsafe_allow_html=True)
 
-    st.success("Datos cargados y cálculos iniciales realizados")
-    st.write(f"**Masa total del lodo:** {masa_total:,.0f} kg")
-    st.write("**Composición del lodo:**")
-    st.dataframe(pd.DataFrame(masas, index=["kg"]).T)
+Mostrar logo
 
-    st.markdown("---")
-    st.header("⚙️ Cálculos por Módulo")
+if Path(LOGO_PATH).exists(): with open(LOGO_PATH, "rb") as f: logo_base64 = base64.b64encode(f.read()).decode("utf-8") st.markdown(f""" <div style='text-align:center;'> <img src='data:image/png;base64,{logo_base64}' width='200'/> </div> """, unsafe_allow_html=True) else: st.warning("⚠️ No se encontró el logo 'logopetrogas.png'")
 
-    # MODULO 2 - RECIRCULACION
-    st.subheader("Módulo 2 - Recirculación + Hidrociclones")
-    st.markdown("""
-Este módulo recircula aceite/lodo calentado para disolver el fondo del tanque. Parte del fluido va a boquillas,
-y parte al sistema de separación. Se calienta mediante vapor indirecto.
-""")
+st.markdown("<h2 style='text-align:center;'>🧪 LTS Lab Analyzer</h2>", unsafe_allow_html=True)
 
-    m_recirc = caudal_recirc * 900  # flujo másico aproximado
-    Cp_aceite = 2.1
-    Q = m_recirc * Cp_aceite * (temp_fin - temp_ini)
+Clase PDF
 
-    st.latex(r"Q = \dot{m} \cdot C_p \cdot \Delta T")
-    st.markdown(f"""
-Donde:  
-- \\\dot{{m}} = {m_recirc:,.0f} \ kg/h  
-- \C_p = {Cp_aceite} \ kJ/kg·K  
-- \\\Delta T = {temp_fin - temp_ini} \ °C
-""")
+class PDF(FPDF): def header(self): if os.path.exists(LOGO_PATH): self.image(LOGO_PATH, 10, 8, 33) self.set_font("Arial", "B", 12) self.cell(0, 10, "INFORME DE ANÁLISIS DE LABORATORIO", 0, 1, "C") self.set_font("Arial", "", 10) self.cell(0, 10, f"Fecha: {datetime.now().strftime('%Y-%m-%d %H:%M')}", 0, 1, "R") self.ln(5)
 
-    st.success(f"Energía térmica requerida: {Q / 1000:,.2f} MW")
+def footer(self):
+    self.set_y(-15)
+    self.set_font("Arial", "I", 8)
+    self.cell(0, 10, "Confidencial - Uso interno PETROGAS", 0, 0, "C")
 
-    st.markdown("---")
-    st.header("📄 Resultado Final y Exportación")
+def add_section(self, title, content):
+    self.set_font("Arial", "B", 11)
+    self.cell(0, 10, title, 0, 1)
+    self.set_font("Arial", "", 10)
+    if isinstance(content, dict):
+        for k, v in content.items():
+            self.cell(0, 8, f"{k}: {v}", 0, 1)
+    else:
+        self.multi_cell(0, 8, str(content))
+    self.ln(2)
 
-    resumen = f"""
-Masa total del lodo: {masa_total:,.0f} kg
-Composición:
-- Hidrocarburos: {masas['Hidrocarburos']:,.0f} kg
-- Agua: {masas['Agua']:,.0f} kg
-- Sólidos inorgánicos: {masas['Sólidos inorgánicos']:,.0f} kg
-- Sólidos orgánicos: {masas['Sólidos orgánicos']:,.0f} kg
+Función para exportar PDF con nuevos campos incluidos
 
-Módulo 2 - Recirculación:
-- Caudal másico: {m_recirc:,.0f} kg/h
-- Energía térmica estimada: {Q / 1000:,.2f} MW
-"""
+def exportar_pdf(nombre, operador, explicacion, resultados, observaciones, muestreo_en, muestra_por): pdf = PDF() pdf.add_page() pdf.add_section("Operador", limpiar_pdf_texto(operador)) pdf.add_section("Muestreo en", limpiar_pdf_texto(muestreo_en)) pdf.add_section("Muestra tomada por", limpiar_pdf_texto(muestra_por)) pdf.add_section("Explicación técnica", limpiar_pdf_texto(explicacion)) pdf.add_section("Resultados", {k: limpiar_pdf_texto(str(v)) for k, v in resultados.items()}) pdf.add_section("Observaciones", limpiar_pdf_texto(observaciones or "Sin observaciones.")) output = pdf.output(dest='S').encode('latin-1', errors='ignore') st.download_button("⬇️ Descargar informe PDF", data=BytesIO(output), file_name=nombre, mime="application/pdf")
 
-    buffer = BytesIO()
-    buffer.write(resumen.encode())
-    buffer.seek(0)
-
-    st.download_button(
-        label="📥 Descargar resumen en TXT",
-        data=buffer,
-        file_name="Resumen_Balance_BLABO.txt",
-        mime="text/plain"
-    )
