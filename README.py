@@ -71,9 +71,8 @@ if submit:
 
     st.success(f"Energía térmica requerida: {Q/1000:,.2f} MW")
 
-    # A continuación: puedes seguir agregando cada módulo de forma similar.
-
-    # Al final: tabla resumen, resultados y botón para descargar PDF (se construirá más adelante)
     st.markdown("---")
     st.header("📄 Resultado Final y Exportación")
-    st.markdown("**Este bloque incluirá el resumen final y generación de PDF con todos los módulos
+    st.markdown("**Este bloque incluirá el resumen final y generación de PDF con todos los módulos.**")
+
+
