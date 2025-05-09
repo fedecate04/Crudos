@@ -1,4 +1,4 @@
-BLABO BALANCE PRO - APP EN STREAMLIT PARA TESIS FINAL
+# BLABO BALANCE PRO - APP EN STREAMLIT PARA TESIS FINALBLABO BALANCE PRO - APP EN STREAMLIT PARA TESIS FINAL
 
 import streamlit
 as st import pandas 
@@ -6,11 +6,11 @@ as pd import numpy
 as np from io 
 import BytesIO
 
-CONFIGURACION GENERAL
+#CONFIGURACION GENERAL
 
 st.set_page_config(page_title="BLABO Balance Pro", layout="wide") st.title("🛢️ BLABO Balance Pro - Simulador Técnico de Limpieza de Tanques")
 
-INTRODUCCION
+#INTRODUCCION
 
 with st.expander("📘 Introducción al Sistema BLABO", expanded=True): st.markdown(""" El sistema BLABO® permite la limpieza automatizada de tanques de almacenamiento de crudo sin ingreso de personal, recuperando hidrocarburos, removiendo lodo parafínico y separando agua y sólidos.
 
@@ -18,7 +18,7 @@ Esta aplicación simula el balance de masa y energía de cada módulo del sistem
 y generación automática de un informe PDF al finalizar.
 """)
 
-ENTRADA DE DATOS
+#ENTRADA DE DATOS
 
 st.sidebar.header("🔧 Parámetros de Entrada") with st.sidebar.form("input_form"): V_tanque = st.number_input("Capacidad del tanque (m³)", value=10000) H_lodo = st.number_input("Altura del lodo (m)", value=4.0) densidad_lodo = st.number_input("Densidad del lodo (kg/m³)", value=950) HC_pct = st.slider("% Hidrocarburos", 0, 100, 70) agua_pct = st.slider("% Agua", 0, 100, 15) sol_inorg_pct = st.slider("% Sólidos inorgánicos", 0, 100, 10) sol_org_pct = st.slider("% Sólidos orgánicos", 0, 100, 5) temp_ini = st.number_input("Temperatura inicial (°C)", value=20) temp_fin = st.number_input("Temperatura objetivo (°C)", value=80) caudal_recirc = st.number_input("Caudal de recirculación (m³/h)", value=100) submit = st.form_submit_button("Calcular")
 
