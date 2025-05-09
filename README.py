@@ -1,113 +1,79 @@
-# app_streamlit_crudos.py
+# BLABO BALANCE PRO - APP EN STREAMLIT PARA TESIS FINAL
 
 import streamlit as st
 import pandas as pd
 import numpy as np
-from io import BytesIO
-from scipy.interpolate import interp1d
 from fpdf import FPDF
-import matplotlib.pyplot as plt
-import tempfile
+from io import BytesIO
 
-# Propiedades base
-PRECIOS = {"<80°C": 10, "80–120°C": 30, "120–180°C": 40, "180–360°C": 48, ">360°C": 28}
-CORTES = list(PRECIOS.keys())
+# CONFIGURACION GENERAL
+st.set_page_config(page_title="BLABO Balance Pro", layout="wide")
+st.title("🛢️ BLABO Balance Pro - Simulador Técnico de Limpieza de Tanques")
 
-# Funciones principales
-def celsius_to_rankine(temp_c):
-    return (temp_c + 273.15) * 9 / 5
-
-def calcular_kw(tb_c, densidad_rel):
-    tb_r = celsius_to_rankine(tb_c)
-    return round((tb_r ** (1/3)) / densidad_rel, 3)
-
-def clasificar_kw(kw):
-    if kw > 12.5:
-        return 'Parafínico'
-    elif kw < 10.5:
-        return 'Nafténico'
-    else:
-        return 'Intermedio'
-
-def clasificar_flashpoint(fp):
-    if fp < 23:
-        return "🔥 Clase I (muy inflamable)"
-    elif fp < 60:
-        return "⚠️ Clase II (riesgo moderado)"
-    else:
-        return "✅ Clase III (poco inflamable)"
-
-def estimar_flash(fracs):
-    livianos = fracs["<80°C"] + fracs["80–120°C"]
-    if livianos > 40:
-        return 20
-    elif livianos > 20:
-        return 40
-    else:
-        return 70
-
-def calcular_ingreso(fracs):
-    return sum((fracs[k] * PRECIOS[k]) / 100 for k in CORTES)
-
-def analizar_crudo(nombre, dens, tb, temp, evap):
-    f = interp1d(temp, evap, kind='linear', fill_value='extrapolate')
-    fracs = {
-        "<80°C": float(f(80)),
-        "80–120°C": float(f(120)) - float(f(80)),
-        "120–180°C": float(f(180)) - float(f(120)),
-        "180–360°C": float(f(360)) - float(f(180)),
-        ">360°C": 100 - float(f(360))
-    }
-    api = round((141.5 / dens) - 131.5, 2)
-    kw = calcular_kw(tb, dens)
-    tipo = clasificar_kw(kw)
-    fp = estimar_flash(fracs)
-    clase_fp = clasificar_flashpoint(fp)
-    ingreso = calcular_ingreso(fracs)
-    return {
-        "Nombre": nombre,
-        "Densidad": dens,
-        "API": api,
-        "Tb": tb,
-        "Kw": kw,
-        "Tipo": tipo,
-        "Flash Point": fp,
-        "Clase": clase_fp,
-        "Ingreso": ingreso,
-        "Fracciones": fracs,
-        "Temp": temp,
-        "Evap": evap
-    }
-
-# PDF
-class PDF(FPDF):
-    def header(self):
-        self.set_font("Arial", 'B', 12)
-        self.cell(0, 10, "Informe Comparativo de Crudos", 0, 1, 'C')
-
-    def add_crudo(self, data):
-        self.set_font("Arial", 'B', 11)
-        self.cell(0, 8, data["Nombre"], 0, 1)
-        self.set_font("Arial", '', 10)
-        for k in ["Densidad", "API", "Tb", "Kw", "Tipo", "Flash Point", "Clase", "Ingreso"]:
-            self.cell(0, 8, f"{k}: {data[k]}", 0, 1)
-        self.set_font("Arial", 'I', 9)
-        self.cell(0, 6, "Distribución estimada por cortes TBP:", 0, 1)
-        for corte, val in data['Fracciones'].items():
-            self.cell(0, 6, f"{corte}: {val:.2f}%", 0, 1)
-        self.ln(3)
-
-    def add_tbp_chart(self, filepath):
-        self.image(filepath, w=180)
-        self.ln(5)
-
-# Streamlit app
-st.set_page_config("Comparador de Crudos", layout="wide")
-st.title("🛢️ Comparador Profesional de Crudos")
-
-with st.expander("ℹ️ ¿Qué cálculos realiza esta aplicación?"):
+# INTRODUCCION
+with st.expander("📘 Introducción al Sistema BLABO", expanded=True):
     st.markdown("""
-    Esta herramienta analiza y compara diferentes crudos con base en los siguientes parámetros:
+    El sistema BLABO® permite la limpieza automatizada de tanques de almacenamiento de crudo sin ingreso de personal,
+    recuperando hidrocarburos, removiendo lodo parafínico y separando agua y sólidos.
 
-    - **Densidad**: Se utiliza para calcular los grados API.
-    - **API**: Calculado como \
+    Esta aplicación simula el balance de masa y energía de cada módulo del sistema, con visualización de fórmulas
+    y generación automática de un informe PDF al finalizar.
+    """)
+
+# ENTRADA DE DATOS
+st.sidebar.header("🔧 Parámetros de Entrada")
+with st.sidebar.form("input_form"):
+    V_tanque = st.number_input("Capacidad del tanque (m³)", value=10000)
+    H_lodo = st.number_input("Altura del lodo (m)", value=4.0)
+    densidad_lodo = st.number_input("Densidad del lodo (kg/m³)", value=950)
+    HC_pct = st.slider("% Hidrocarburos", 0, 100, 70)
+    agua_pct = st.slider("% Agua", 0, 100, 15)
+    sol_inorg_pct = st.slider("% Sólidos inorgánicos", 0, 100, 10)
+    sol_org_pct = st.slider("% Sólidos orgánicos", 0, 100, 5)
+    temp_ini = st.number_input("Temperatura inicial (°C)", value=20)
+    temp_fin = st.number_input("Temperatura objetivo (°C)", value=80)
+    caudal_recirc = st.number_input("Caudal de recirculación (m³/h)", value=100)
+    submit = st.form_submit_button("Calcular")
+
+if submit:
+    # CALCULOS BASE
+    volumen_lodo = V_tanque * H_lodo / H_lodo  # simplificado
+    masa_total = volumen_lodo * densidad_lodo
+
+    masas = {
+        "Hidrocarburos": masa_total * HC_pct / 100,
+        "Agua": masa_total * agua_pct / 100,
+        "Sólidos inorgánicos": masa_total * sol_inorg_pct / 100,
+        "Sólidos orgánicos": masa_total * sol_org_pct / 100
+    }
+
+    st.success("Datos cargados y cálculos iniciales realizados")
+    st.write(f"**Masa total del lodo:** {masa_total:,.0f} kg")
+    st.write("**Composición del lodo:**")
+    st.dataframe(pd.DataFrame(masas, index=["kg"]).T)
+
+    st.markdown("---")
+    st.header("⚙️ Cálculos por Módulo")
+
+    # Ejemplo: MODULO 2 - RECIRCULACION
+    st.subheader("Módulo 2 - Recirculación + Hidrociclones")
+    st.markdown("""
+    Este módulo recircula aceite/lodo calentado para disolver el fondo del tanque. Parte del fluido va a boquillas,
+    y parte al sistema de separación. Se calienta mediante vapor indirecto.
+    """)
+
+    m_recirc = caudal_recirc * 900  # flujo másico aproximado
+    Cp_aceite = 2.1
+    Q = m_recirc * Cp_aceite * (temp_fin - temp_ini)
+
+    st.latex(r"Q = \dot{m} \cdot C_p \cdot \Delta T")
+    st.markdown(f"Donde: \n- \( \dot{{m}} = {m_recirc:,.0f} \) kg/h \n- \( C_p = {Cp_aceite} \) kJ/kg·K \n- \( \Delta T = {temp_fin - temp_ini} \) °C")
+
+    st.success(f"Energía térmica requerida: {Q/1000:,.2f} MW")
+
+    # A continuación: puedes seguir agregando cada módulo de forma similar.
+
+    # Al final: tabla resumen, resultados y botón para descargar PDF (se construirá más adelante)
+    st.markdown("---")
+    st.header("📄 Resultado Final y Exportación")
+    st.markdown("**Este bloque incluirá el resumen final y generación de PDF con todos los módulos
