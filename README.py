@@ -23,34 +23,40 @@ with col2:
     <h3 style='margin-top:0;'>Crude Analyzer Pro</h3>
     """, unsafe_allow_html=True)
 
-# Estilo CSS
+# Introducción
 st.markdown("""
-    <style>
-        .stApp { background-color: #1e1e1e; color: white; }
-        .stTextInput, .stNumberInput, .stTextArea, .stFileUploader { background-color: #2e2e2e !important; color: white !important; }
-        .stButton>button { background-color: #0d6efd; color: white; border-radius: 8px; border: none; }
-    </style>
+    <hr>
+    <p>Esta herramienta profesional permite caracterizar crudos utilizando su curva TBP (destilación), calcular el factor de Watson, estimar ingresos económicos por fracción y analizar la composición PONA (Parafínicos, Olefínicos, Nafténicos y Aromáticos).</p>
+    <ul>
+        <li><strong>Densidad</strong>: Usada para calcular el factor de Watson.</li>
+        <li><strong>Curva TBP</strong>: Representa el porcentaje de volumen destilado a distintas temperaturas.</li>
+        <li><strong>Watson (Kw)</strong>: Indica el tipo de crudo. Kw &gt; 12: parafínico, Kw &lt; 10: aromático.</li>
+        <li><strong>Ingreso estimado</strong>: Calculado en base a precios por fracción.</li>
+        <li><strong>PONA</strong>: Analiza el perfil químico del crudo.</li>
+    </ul>
+    <p>🌡️ <strong>Dew Point</strong>: Punto de rocío, donde comienzan a condensarse hidrocarburos.</p>
+    <p>❄️ <strong>Sad Point</strong>: Punto donde las ceras comienzan a cristalizar, importante para transporte.</p>
+    <hr>
 """, unsafe_allow_html=True)
 
 # Tabs principales
-tabs = st.tabs(["🧾 Datos del Crudo", "📊 Evaluación Económica", "🧠 Análisis FODA", "📄 Exportar PDF"])
+tabs = st.tabs(["📥 Datos del Crudo", "💰 Evaluación Económica", "🧪 Análisis PONA", "📄 Informe PDF"])
 
-# Variables de sesión
 if "tbp_df" not in st.session_state:
     st.session_state.tbp_df = None
 if "kw" not in st.session_state:
     st.session_state.kw = ""
 if "ingresos" not in st.session_state:
     st.session_state.ingresos = ""
-if "foda" not in st.session_state:
-    st.session_state.foda = {}
+if "pona" not in st.session_state:
+    st.session_state.pona = {}
 
 # --- TAB 1: Datos del Crudo --- #
 with tabs[0]:
     st.subheader("📥 Ingreso de datos técnicos")
 
-    densidad = st.number_input("Densidad a 15 °C [kg/m³]", value=850.0)
-    temp_k = st.number_input("Temperatura promedio de ebullición TBP [K]", value=673.15)
+    densidad = st.number_input("Densidad a 15 °C [kg/m³]", value=850.0, help="Usada para calcular el factor de Watson")
+    temp_k = st.number_input("Temperatura promedio de ebullición TBP [K]", value=673.15, help="Promedio ponderado de la curva TBP")
 
     archivo = st.file_uploader("📂 Cargar curva TBP (.csv con columnas 'Temperatura' y 'Volumen')", type=["csv"])
 
@@ -68,11 +74,10 @@ with tabs[0]:
             ax.grid(True)
             st.pyplot(fig)
 
-            # Cálculo del factor de Watson
             dens_gcm3 = densidad / 1000
             kw = round((temp_k ** (1/3)) / dens_gcm3, 3)
             st.session_state.kw = kw
-            st.info(f"🧪 Factor de Watson: {kw}")
+            st.markdown(f"<h2 style='color:#4CAF50;'>🧪 Factor de Watson: {kw}</h2>", unsafe_allow_html=True)
         else:
             st.error("El archivo debe tener columnas 'Temperatura' y 'Volumen'")
 
@@ -103,24 +108,44 @@ with tabs[1]:
             vol = subset["Volumen"].sum()
             ingreso = vol * precios[fraccion] / 100
             total += ingreso
-            texto += f"{fraccion}: {vol:.1f}% -> ${ingreso:.2f}\n"
+            texto += f"{fraccion}: {vol:.1f}% * ${precios[fraccion]:.2f} = ${ingreso:.2f}\n"
         texto += f"\nTotal estimado: ${total:.2f}"
         st.session_state.ingresos = texto
-        st.text_area("🧾 Resultado del cálculo económico", texto, height=160)
+        st.text_area("🧾 Detalle del cálculo económico", texto, height=180)
     else:
         st.warning("Primero debés cargar una curva TBP válida en la pestaña anterior.")
 
-# --- TAB 3: Análisis FODA --- #
+# --- TAB 3: Análisis PONA --- #
 with tabs[2]:
-    st.subheader("🧠 Análisis FODA del crudo")
-    foda = {}
-    for campo in ["Fortalezas", "Oportunidades", "Debilidades", "Amenazas"]:
-        foda[campo] = st.text_area(campo, value=st.session_state.foda.get(campo, ""))
-    st.session_state.foda = foda
+    st.subheader("🧪 Composición PONA (%)")
 
-# --- TAB 4: Exportación PDF --- #
+    parafinicos = st.slider("% Parafínicos", 0, 100, 40)
+    olefinicos = st.slider("% Olefínicos", 0, 100, 5)
+    naftenicos = st.slider("% Nafténicos", 0, 100, 25)
+    aromaticos = st.slider("% Aromáticos", 0, 100, 30)
+    total_pona = parafinicos + olefinicos + naftenicos + aromaticos
+
+    if total_pona != 100:
+        st.warning(f"⚠️ La suma total es {total_pona}%. Debe ser exactamente 100%.")
+    else:
+        st.success("✅ Composición válida.")
+        fig, ax = plt.subplots()
+        labels = ["Parafínicos", "Olefínicos", "Nafténicos", "Aromáticos"]
+        values = [parafinicos, olefinicos, naftenicos, aromaticos]
+        ax.pie(values, labels=labels, autopct='%1.1f%%')
+        ax.set_title("Distribución PONA")
+        st.pyplot(fig)
+
+    st.session_state.pona = {
+        "Parafínicos": parafinicos,
+        "Olefínicos": olefinicos,
+        "Nafténicos": naftenicos,
+        "Aromáticos": aromaticos
+    }
+
+# --- TAB 4: PDF --- #
 with tabs[3]:
-    st.subheader("📄 Exportar informe PDF")
+    st.subheader("📄 Exportar informe profesional")
 
     class PDF(FPDF):
         def header(self):
@@ -139,7 +164,7 @@ with tabs[3]:
                 self.multi_cell(0, 8, content)
             elif isinstance(content, dict):
                 for k, v in content.items():
-                    self.multi_cell(0, 8, f"{k}:\n{v}\n")
+                    self.multi_cell(0, 8, f"{k}: {v}%")
             self.ln(2)
 
     if st.button("📥 Descargar informe en PDF"):
@@ -147,7 +172,7 @@ with tabs[3]:
         pdf.add_page()
         pdf.section("Factor de Watson", str(st.session_state.kw))
         pdf.section("Evaluación Económica", st.session_state.ingresos)
-        pdf.section("Análisis FODA", st.session_state.foda)
+        pdf.section("Análisis PONA", st.session_state.pona)
 
         buffer = BytesIO()
         pdf.output(buffer)
