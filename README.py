@@ -14,7 +14,10 @@ LOGO_PATH = "utnlogo.png"
 
 # Sidebar profesional
 with st.sidebar:
-    st.image(LOGO_PATH, width=150)
+    if os.path.exists(LOGO_PATH):
+        st.image(LOGO_PATH, width=150)
+    else:
+        st.warning("⚠️ No se encontró el logo 'utnlogo.png'")
     st.markdown("""
     ## 🛢️ Crude Analyzer Pro
     UTN-FRN · Ingeniería Química
@@ -81,7 +84,11 @@ with tabs[0]:
     archivo = st.file_uploader("📂 Cargar curva TBP (.csv con columnas 'Temperatura' y 'Volumen')", type="csv")
 
     if archivo is not None:
-        df = pd.read_csv(archivo)
+        try:
+            df = pd.read_csv(archivo)
+        except Exception as e:
+            st.error(f"❌ Error al leer el archivo TBP: {e}")
+            df = pd.DataFrame()
         if "Temperatura" in df.columns and "Volumen" in df.columns:
             st.session_state.tbp_df = df
             st.success("Curva TBP cargada correctamente.")
@@ -143,7 +150,13 @@ with tabs[2]:
     pona_csv = st.file_uploader("📁 Cargar CSV de composición PONA (opcional)", type="csv")
 
     if pona_csv:
+        try:
         df_pona = pd.read_csv(pona_csv)
+        if not all(col in df_pona.columns for col in ['Parafínicos', 'Olefínicos', 'Nafténicos', 'Aromáticos']):
+            raise ValueError("Faltan columnas necesarias en el archivo CSV")
+    except Exception as e:
+        st.error(f"❌ Error al leer el archivo PONA: {e}")
+        df_pona = pd.DataFrame({'Parafínicos': [0], 'Olefínicos': [0], 'Nafténicos': [0], 'Aromáticos': [0]})
         try:
             paraf, olef, naft, arom = df_pona.iloc[0]
         except:
@@ -190,14 +203,16 @@ with tabs[3]:
             self.ln(2)
 
     if st.button("📥 Descargar Informe PDF"):
-        pdf = PDF()
+        try:
+            pdf = PDF()
         pdf.add_page()
         pdf.section("Factor de Watson", str(st.session_state.kw))
         pdf.section("Evaluación Económica", st.session_state.ingresos)
         pdf.section("Análisis PONA", st.session_state.pona)
 
         buffer = BytesIO()
-        pdf.output(buffer)
+        pdf_bytes = pdf.output(dest='S').encode('latin1')
+            buffer.write(pdf_bytes)
         buffer.seek(0)
 
         st.download_button(
