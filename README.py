@@ -10,14 +10,14 @@ import os
 
 # Configuración inicial
 st.set_page_config(page_title="Crude Analyzer Pro - UTN-FRN", layout="wide")
-LOGO_PATH = "utnlogo.png"
+LOGO_PATH = "logoutn.png"
 
 # Sidebar profesional
 with st.sidebar:
     if os.path.exists(LOGO_PATH):
         st.image(LOGO_PATH, width=150)
     else:
-        st.warning("⚠️ No se encontró el logo 'utnlogo.png'")
+        st.warning("⚠️ No se encontró el logo 'logoutn.png'")
     st.markdown("""
     ## 🛢️ Crude Analyzer Pro
     UTN-FRN · Ingeniería Química
