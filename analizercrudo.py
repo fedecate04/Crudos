@@ -228,11 +228,9 @@ with tabs[3]:
     st.subheader("📄 Generar Informe Técnico en PDF")
 
     import re
-
     def limpiar_emoji(texto):
         if not isinstance(texto, str):
             return texto
-        # Elimina emojis y caracteres fuera del rango latin-1
         return re.sub(r'[^\x00-\xff]', '', texto.replace("–", "-").replace("—", "-"))
 
     class PDF(FPDF):
@@ -261,11 +259,36 @@ with tabs[3]:
                     self.multi_cell(0, 8, limpiar_emoji(linea))
             self.ln(2)
 
+    # Guardar imagen TBP si existe curva cargada
+    tbp_img_path = "tbp_temp_plot.png"
+    if st.session_state.tbp_df is not None:
+        fig, ax = plt.subplots(facecolor="#ffffff")
+        df = st.session_state.tbp_df
+        ax.plot(df["Temperatura"], df["Volumen"], marker='o', linestyle='-', color='black')
+        ax.set_xlabel("Temperatura [°C]")
+        ax.set_ylabel("% Volumen Destilado")
+        ax.set_title("Curva de Destilación TBP")
+        ax.grid(True)
+        plt.tight_layout()
+        fig.savefig(tbp_img_path, dpi=150)
+        plt.close(fig)
+    else:
+        tbp_img_path = None
+
+    # Botón para generar PDF
     if st.button("📥 Descargar Informe PDF"):
         try:
             pdf = PDF()
             pdf.add_page()
 
+            # Insertar imagen de curva TBP si existe
+            if tbp_img_path and os.path.exists(tbp_img_path):
+                pdf.set_font("Arial", "B", 11)
+                pdf.cell(0, 10, "Curva TBP", 0, 1)
+                pdf.image(tbp_img_path, x=10, w=180)
+                pdf.ln(5)
+
+            # Secciones
             pdf.section("Factor de Watson / API", f"{st.session_state.kw} Watson, {st.session_state.api}° API")
             pdf.section("Clasificación del crudo", st.session_state.tipo_crudo)
 
@@ -275,6 +298,7 @@ with tabs[3]:
             if isinstance(st.session_state.pona, dict) and st.session_state.pona:
                 pdf.section("Composición PONA", st.session_state.pona)
 
+            # Convertir PDF en buffer descargable
             buffer = BytesIO()
             pdf_bytes = pdf.output(dest='S').encode('latin1')
             buffer.write(pdf_bytes)
@@ -286,6 +310,12 @@ with tabs[3]:
                 file_name="informe_crudo.pdf",
                 mime="application/pdf"
             )
+
         except Exception as e:
             st.error(f"❌ Error al generar el PDF: {e}")
+
+        # Eliminar imagen temporal
+        if tbp_img_path and os.path.exists(tbp_img_path):
+            os.remove(tbp_img_path)
+
 
