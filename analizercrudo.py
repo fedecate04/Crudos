@@ -223,9 +223,17 @@ with tabs[2]:
             "Aromáticos": arom
         }
 
-# --- TAB 4: PDF ---
+# TAB 4 – 📄 Generar Informe PDF Profesional
 with tabs[3]:
-    st.subheader("📄 Generar Informe PDF Profesional")
+    st.subheader("📄 Generar Informe Técnico en PDF")
+
+    import re
+
+    def limpiar_emoji(texto):
+        if not isinstance(texto, str):
+            return texto
+        # Elimina emojis y caracteres fuera del rango latin-1
+        return re.sub(r'[^\x00-\xff]', '', texto.replace("–", "-").replace("—", "-"))
 
     class PDF(FPDF):
         def header(self):
@@ -239,33 +247,45 @@ with tabs[3]:
 
         def section(self, title, content):
             self.set_font("Arial", "B", 11)
-            self.cell(0, 10, title, 0, 1)
+            self.cell(0, 10, limpiar_emoji(title), 0, 1)
             self.set_font("Arial", "", 10)
+
             if isinstance(content, str):
-                self.multi_cell(0, 8, content.replace("–", "-"))
+                self.multi_cell(0, 8, limpiar_emoji(content))
             elif isinstance(content, dict):
                 for k, v in content.items():
-                    self.multi_cell(0, 8, f"{k}: {v}%")
+                    self.multi_cell(0, 8, limpiar_emoji(f"{k}: {v}%"))
             elif isinstance(content, pd.DataFrame):
                 for _, row in content.iterrows():
-                    self.multi_cell(0, 8, f"{row['Fracción']}: {row['Volumen [%]']}% * ${row['Precio [USD/100 kg]']} = ${row['Ingreso Estimado [USD]']}")
+                    linea = f"{row['Fracción']}: {row['Volumen [%]']}% * ${row['Precio [USD/100 kg]']} = ${row['Ingreso Estimado [USD]']}"
+                    self.multi_cell(0, 8, limpiar_emoji(linea))
             self.ln(2)
 
     if st.button("📥 Descargar Informe PDF"):
         try:
             pdf = PDF()
             pdf.add_page()
-            pdf.section("🧪 Factor de Watson / API", f"{st.session_state.kw} Watson, {st.session_state.api}° API")
-            pdf.section("🏷️ Clasificación del crudo", st.session_state.tipo_crudo)
+
+            pdf.section("Factor de Watson / API", f"{st.session_state.kw} Watson, {st.session_state.api}° API")
+            pdf.section("Clasificación del crudo", st.session_state.tipo_crudo)
+
             if isinstance(st.session_state.ingresos, pd.DataFrame):
-                pdf.section("💰 Evaluación Económica", st.session_state.ingresos)
+                pdf.section("Evaluación Económica", st.session_state.ingresos)
+
             if isinstance(st.session_state.pona, dict) and st.session_state.pona:
-                pdf.section("🧪 Composición PONA", st.session_state.pona)
+                pdf.section("Composición PONA", st.session_state.pona)
 
             buffer = BytesIO()
             pdf_bytes = pdf.output(dest='S').encode('latin1')
             buffer.write(pdf_bytes)
             buffer.seek(0)
-            st.download_button("📄 Descargar Informe PDF", data=buffer, file_name="informe_crudo.pdf", mime="application/pdf")
+
+            st.download_button(
+                label="📄 Descargar Informe PDF",
+                data=buffer,
+                file_name="informe_crudo.pdf",
+                mime="application/pdf"
+            )
         except Exception as e:
             st.error(f"❌ Error al generar el PDF: {e}")
+
