@@ -71,7 +71,13 @@ with st.expander("ℹ️ Introducción técnica al sistema"):
     """)
 
 # Tabs
-tabs = st.tabs(["📥 Datos del Crudo", "💰 Evaluación Económica", "🧪 Análisis PONA", "📄 Informe PDF"])
+tabs = st.tabs([
+    "📥 Datos del Crudo",
+    "💰 Evaluación Económica",
+    "🧪 Análisis PONA",
+    "⚗️ Rendimiento Estimado",
+    "📄 Informe PDF"
+])
 
 # Variables de estado
 if "tbp_df" not in st.session_state:
@@ -222,6 +228,43 @@ with tabs[2]:
             "Nafténicos": naft,
             "Aromáticos": arom
         }
+
+# --- TAB 4: RENDIMIENTO ESTIMADO ---
+with tabs[3]:
+    st.subheader("⚗️ Estimación de Rendimiento por Producto")
+
+    if st.session_state.tbp_df is not None:
+        df = st.session_state.tbp_df
+
+        cortes = {
+            "Gasolinas (<150 °C)": df[df["Temperatura"] < 150],
+            "Kerosene (150–250 °C)": df[(df["Temperatura"] >= 150) & (df["Temperatura"] < 250)],
+            "Diesel (250–350 °C)": df[(df["Temperatura"] >= 250) & (df["Temperatura"] < 350)],
+            "Gasoil Pesado (350–450 °C)": df[(df["Temperatura"] >= 350) & (df["Temperatura"] < 450)],
+            "Fondo / Residuo (>450 °C)": df[df["Temperatura"] >= 450]
+        }
+
+        resultados = []
+        for producto, subdf in cortes.items():
+            vol = subdf["Volumen"].sum()
+            resultados.append({"Producto": producto, "Volumen [%]": round(vol, 2)})
+
+        df_rend = pd.DataFrame(resultados)
+        st.session_state.rendimiento = df_rend
+
+        st.dataframe(df_rend, use_container_width=True)
+
+        # Gráfico de barras
+        fig, ax = plt.subplots()
+        ax.bar(df_rend["Producto"], df_rend["Volumen [%]"], color='mediumseagreen')
+        ax.set_ylabel("Volumen [%]")
+        ax.set_title("Distribución Estimada por Corte Refinado")
+        plt.xticks(rotation=30, ha="right")
+        st.pyplot(fig)
+
+    else:
+        st.warning("📌 Cargá una curva TBP válida para calcular los rendimientos.")
+
 
 # TAB 4 – 📄 Generar Informe PDF Profesional
 with tabs[3]:
