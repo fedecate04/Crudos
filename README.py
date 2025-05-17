@@ -151,16 +151,12 @@ with tabs[2]:
 
     if pona_csv:
         try:
-        df_pona = pd.read_csv(pona_csv)
-        if not all(col in df_pona.columns for col in ['Parafínicos', 'Olefínicos', 'Nafténicos', 'Aromáticos']):
-            raise ValueError("Faltan columnas necesarias en el archivo CSV")
-    except Exception as e:
-        st.error(f"❌ Error al leer el archivo PONA: {e}")
-        df_pona = pd.DataFrame({'Parafínicos': [0], 'Olefínicos': [0], 'Nafténicos': [0], 'Aromáticos': [0]})
-        try:
+            df_pona = pd.read_csv(pona_csv)
+            if not all(col in df_pona.columns for col in ['Parafínicos', 'Olefínicos', 'Nafténicos', 'Aromáticos']):
+                raise ValueError("Faltan columnas necesarias en el archivo CSV")
             paraf, olef, naft, arom = df_pona.iloc[0]
-        except:
-            st.error("Error al leer el archivo. Asegurate que tenga columnas: Parafínicos, Olefínicos, Nafténicos, Aromáticos")
+        except Exception as e:
+            st.error(f"❌ Error al leer el archivo PONA: {e}")
             paraf = olef = naft = arom = 0
     else:
         paraf = st.slider("% Parafínicos", 0, 100, 40)
@@ -205,20 +201,22 @@ with tabs[3]:
     if st.button("📥 Descargar Informe PDF"):
         try:
             pdf = PDF()
-        pdf.add_page()
-        pdf.section("Factor de Watson", str(st.session_state.kw))
-        pdf.section("Evaluación Económica", st.session_state.ingresos)
-        pdf.section("Análisis PONA", st.session_state.pona)
+            pdf.add_page()
+            pdf.section("Factor de Watson", str(st.session_state.kw))
+            pdf.section("Evaluación Económica", st.session_state.ingresos)
+            pdf.section("Análisis PONA", st.session_state.pona)
 
-        buffer = BytesIO()
-        pdf_bytes = pdf.output(dest='S').encode('latin1')
+            buffer = BytesIO()
+            pdf_bytes = pdf.output(dest='S').encode('latin1')
             buffer.write(pdf_bytes)
-        buffer.seek(0)
+            buffer.seek(0)
 
-        st.download_button(
-            label="📄 Descargar PDF",
-            data=buffer,
-            file_name="informe_crudo.pdf",
-            mime="application/pdf"
-        )
+            st.download_button(
+                label="📄 Descargar PDF",
+                data=buffer,
+                file_name="informe_crudo.pdf",
+                mime="application/pdf"
+            )
+        except Exception as e:
+            st.error(f"❌ Error al generar el PDF: {e}")
 
