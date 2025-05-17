@@ -318,11 +318,28 @@ with tabs[4]:
     else:
         tbp_img_path = None
 
+    # Guardar gráfico de rendimiento si está disponible
+    rend_img_path = "rend_temp_plot.png"
+    if isinstance(st.session_state.get("rendimiento"), pd.DataFrame):
+        df_rend = st.session_state.rendimiento
+        fig, ax = plt.subplots(facecolor="#ffffff")
+        ax.bar(df_rend["Producto"], df_rend["Volumen [%]"], color='darkorange')
+        ax.set_ylabel("Volumen [%]")
+        ax.set_title("Rendimiento Estimado por Corte")
+        plt.xticks(rotation=30, ha="right")
+        plt.tight_layout()
+        fig.savefig(rend_img_path, dpi=150)
+        plt.close(fig)
+    else:
+        rend_img_path = None
+
+    # Botón para generar PDF
     if st.button("📥 Descargar Informe PDF"):
         try:
             pdf = PDF()
             pdf.add_page()
 
+            # Insertar imagen TBP
             if tbp_img_path and os.path.exists(tbp_img_path):
                 pdf.set_font("Arial", "B", 11)
                 pdf.cell(0, 10, "Curva TBP", 0, 1)
@@ -341,6 +358,30 @@ with tabs[4]:
             if isinstance(st.session_state.get("rendimiento"), pd.DataFrame):
                 pdf.section("Rendimiento estimado por fracción", st.session_state.rendimiento)
 
+                # Insertar gráfico de rendimiento
+                if rend_img_path and os.path.exists(rend_img_path):
+                    pdf.set_font("Arial", "B", 11)
+                    pdf.cell(0, 10, "Gráfico de Rendimiento", 0, 1)
+                    pdf.image(rend_img_path, x=10, w=180)
+                    pdf.ln(4)
+
+                # Observación del corte predominante
+                df_rend = st.session_state.rendimiento
+                predom = df_rend.loc[df_rend["Volumen [%]"].idxmax()]
+                producto_pred = predom["Producto"]
+                vol_pred = predom["Volumen [%]"]
+
+                observacion = f"El corte predominante es {producto_pred} con un {vol_pred:.1f}% del volumen total. "
+                if "Gasolinas" in producto_pred:
+                    observacion += "Esto sugiere un crudo liviano, ideal para la producción de naftas y productos ligeros."
+                elif "Fondo" in producto_pred:
+                    observacion += "Esto indica un crudo pesado, con mayor proporción de residuos y necesidad de procesos de conversión."
+                elif "Diesel" in producto_pred or "Gasoil" in producto_pred:
+                    observacion += "El crudo tiene un buen rendimiento medio, adecuado para refinerías orientadas a gasoil y destilados."
+
+                pdf.section("Observaciones sobre rendimiento", observacion)
+
+            # Generar archivo PDF en buffer
             buffer = BytesIO()
             pdf_bytes = pdf.output(dest='S').encode('latin1')
             buffer.write(pdf_bytes)
@@ -356,8 +397,12 @@ with tabs[4]:
         except Exception as e:
             st.error(f"❌ Error al generar el PDF: {e}")
 
+        # Limpiar imágenes temporales
         if tbp_img_path and os.path.exists(tbp_img_path):
             os.remove(tbp_img_path)
+        if rend_img_path and os.path.exists(rend_img_path):
+            os.remove(rend_img_path)
+
 
 
 
