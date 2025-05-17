@@ -1,5 +1,4 @@
-streamlit
-pandas
-numpy
-fpdf
-qrcode
+streamlit>=1.30.0
+pandas>=2.0.0
+matplotlib>=3.7.0
+fpdf>=1.7.2
