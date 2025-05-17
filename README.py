@@ -12,36 +12,53 @@ import os
 st.set_page_config(page_title="Crude Analyzer Pro - UTN-FRN", layout="wide")
 LOGO_PATH = "utnlogo.png"
 
-# Mostrar encabezado
-col1, col2 = st.columns([1, 9])
-with col1:
-    if os.path.exists(LOGO_PATH):
-        st.image(LOGO_PATH, width=80)
-with col2:
+# Sidebar profesional
+with st.sidebar:
+    st.image(LOGO_PATH, width=150)
     st.markdown("""
-    <h1 style='margin-bottom:0;'>UTN-FRN INDUSTRIALIZACIÓN</h1>
-    <h3 style='margin-top:0;'>Crude Analyzer Pro</h3>
-    """, unsafe_allow_html=True)
+    ## 🛢️ Crude Analyzer Pro
+    UTN-FRN · Ingeniería Química
 
-# Introducción
+    **Versión:** 2.0
+    **Autor:** Federico Catereniuc
+
+    Esta app permite:
+    - 📊 Analizar curvas TBP
+    - 🧪 Calcular Watson
+    - 💰 Estimar ingresos
+    - 🧠 Evaluar composición PONA
+
+    📩 Contacto: federico@example.com
+    """)
+
+# Encabezado
 st.markdown("""
-    <hr>
-    <p>Esta herramienta profesional permite caracterizar crudos utilizando su curva TBP (destilación), calcular el factor de Watson, estimar ingresos económicos por fracción y analizar la composición PONA (Parafínicos, Olefínicos, Nafténicos y Aromáticos).</p>
-    <ul>
-        <li><strong>Densidad</strong>: Usada para calcular el factor de Watson.</li>
-        <li><strong>Curva TBP</strong>: Representa el porcentaje de volumen destilado a distintas temperaturas.</li>
-        <li><strong>Watson (Kw)</strong>: Indica el tipo de crudo. Kw &gt; 12: parafínico, Kw &lt; 10: aromático.</li>
-        <li><strong>Ingreso estimado</strong>: Calculado en base a precios por fracción.</li>
-        <li><strong>PONA</strong>: Analiza el perfil químico del crudo.</li>
-    </ul>
-    <p>🌡️ <strong>Dew Point</strong>: Punto de rocío, donde comienzan a condensarse hidrocarburos.</p>
-    <p>❄️ <strong>Sad Point</strong>: Punto donde las ceras comienzan a cristalizar, importante para transporte.</p>
-    <hr>
+    <h1 style='text-align:center; color:#4CAF50;'>🛢️ UTN-FRN INDUSTRIALIZACIÓN</h1>
+    <h3 style='text-align:center;'>Sistema de Análisis Profesional de Crudos</h3>
 """, unsafe_allow_html=True)
 
-# Tabs principales
+# Introducción técnica
+with st.expander("ℹ️ Ver introducción al sistema"):
+    st.markdown("""
+    Esta herramienta profesional permite:
+    - Cargar y visualizar curvas TBP.
+    - Calcular el factor de Watson.
+    - Estimar ingresos por fracción.
+    - Analizar composiciones químicas PONA (Parafínicos, Olefínicos, Nafténicos, Aromáticos).
+
+    ### 🧪 Parámetros Clave
+    - **Densidad [kg/m³]**: usada para clasificar el crudo.
+    - **TBP**: curva de % de destilado vs temperatura.
+    - **Watson (Kw)**: relaciona densidad y punto medio de ebullición.
+    - **Dew Point / Sad Point**: indicadores de condensación y cristalización (visual).
+    - **Ingreso económico**: estimación por fracción.
+    - **PONA**: perfil químico para clasificación de hidrocarburos.
+    """)
+
+# Tabs
 tabs = st.tabs(["📥 Datos del Crudo", "💰 Evaluación Económica", "🧪 Análisis PONA", "📄 Informe PDF"])
 
+# Variables de estado
 if "tbp_df" not in st.session_state:
     st.session_state.tbp_df = None
 if "kw" not in st.session_state:
@@ -51,14 +68,17 @@ if "ingresos" not in st.session_state:
 if "pona" not in st.session_state:
     st.session_state.pona = {}
 
-# --- TAB 1: Datos del Crudo --- #
+# TAB 1 - CARGA DE DATOS
 with tabs[0]:
-    st.subheader("📥 Ingreso de datos técnicos")
+    st.subheader("📥 Ingreso de datos del crudo")
 
-    densidad = st.number_input("Densidad a 15 °C [kg/m³]", value=850.0, help="Usada para calcular el factor de Watson")
-    temp_k = st.number_input("Temperatura promedio de ebullición TBP [K]", value=673.15, help="Promedio ponderado de la curva TBP")
+    col1, col2 = st.columns(2)
+    with col1:
+        densidad = st.number_input("Densidad a 15 °C [kg/m³]", value=850.0, help="Usada para calcular el factor de Watson")
+    with col2:
+        temp_k = st.number_input("Temperatura media de ebullición TBP [K]", value=673.15, help="Promedio ponderado de TBP")
 
-    archivo = st.file_uploader("📂 Cargar curva TBP (.csv con columnas 'Temperatura' y 'Volumen')", type=["csv"])
+    archivo = st.file_uploader("📂 Cargar curva TBP (.csv con columnas 'Temperatura' y 'Volumen')", type="csv")
 
     if archivo is not None:
         df = pd.read_csv(archivo)
@@ -67,7 +87,7 @@ with tabs[0]:
             st.success("Curva TBP cargada correctamente.")
 
             fig, ax = plt.subplots()
-            ax.plot(df["Temperatura"], df["Volumen"], marker="o")
+            ax.plot(df["Temperatura"], df["Volumen"], marker='o')
             ax.set_xlabel("Temperatura [°C]")
             ax.set_ylabel("% Volumen Destilado")
             ax.set_title("Curva TBP")
@@ -77,20 +97,20 @@ with tabs[0]:
             dens_gcm3 = densidad / 1000
             kw = round((temp_k ** (1/3)) / dens_gcm3, 3)
             st.session_state.kw = kw
-            st.markdown(f"<h2 style='color:#4CAF50;'>🧪 Factor de Watson: {kw}</h2>", unsafe_allow_html=True)
+            st.metric("🧪 Factor de Watson", value=kw)
         else:
             st.error("El archivo debe tener columnas 'Temperatura' y 'Volumen'")
 
-# --- TAB 2: Evaluación Económica --- #
+# TAB 2 - INGRESOS ECONÓMICOS
 with tabs[1]:
-    st.subheader("💰 Estimación de ingresos por fracción")
+    st.subheader("💰 Estimación de ingresos por fracción TBP")
 
     precios = {
-        "<80°C (LPG-NL)": st.number_input("<80°C (LPG-NL) [USD/bbl]", value=0.0),
-        "80–120°C (NL-NV)": st.number_input("80–120°C (NL-NV) [USD/bbl]", value=30.0),
-        "120–180°C (NP)": st.number_input("120–180°C (NP) [USD/bbl]", value=40.0),
-        "180–360°C (GO+K)": st.number_input("180–360°C (GO+K) [USD/bbl]", value=48.0),
-        ">360°C (GOP+CR)": st.number_input(">360°C (GOP+CR) [USD/bbl]", value=28.0)
+        "<80°C (LPG-NL)": st.number_input("Precio <80°C (LPG-NL)", value=0.0),
+        "80–120°C (NL-NV)": st.number_input("Precio 80–120°C", value=30.0),
+        "120–180°C (NP)": st.number_input("Precio 120–180°C", value=40.0),
+        "180–360°C (GO+K)": st.number_input("Precio 180–360°C", value=48.0),
+        ">360°C (GOP+CR)": st.number_input("Precio >360°C", value=28.0)
     }
 
     if st.session_state.tbp_df is not None:
@@ -104,48 +124,50 @@ with tabs[1]:
         }
         texto = ""
         total = 0
-        for fraccion, subset in fracciones.items():
-            vol = subset["Volumen"].sum()
-            ingreso = vol * precios[fraccion] / 100
+        for fr, sub in fracciones.items():
+            vol = sub["Volumen"].sum()
+            ingreso = vol * precios[fr] / 100
             total += ingreso
-            texto += f"{fraccion}: {vol:.1f}% * ${precios[fraccion]:.2f} = ${ingreso:.2f}\n"
+            texto += f"{fr}: {vol:.1f}% * ${precios[fr]:.2f} = ${ingreso:.2f}\n"
         texto += f"\nTotal estimado: ${total:.2f}"
         st.session_state.ingresos = texto
-        st.text_area("🧾 Detalle del cálculo económico", texto, height=180)
+        st.code(texto)
+        st.metric("Total estimado", f"${total:.2f}")
     else:
-        st.warning("Primero debés cargar una curva TBP válida en la pestaña anterior.")
+        st.warning("Primero cargá una curva TBP válida.")
 
-# --- TAB 3: Análisis PONA --- #
+# TAB 3 - ANÁLISIS PONA
 with tabs[2]:
-    st.subheader("🧪 Composición PONA (%)")
+    st.subheader("🧪 Análisis PONA (Parafínicos - Olefínicos - Nafténicos - Aromáticos)")
 
-    parafinicos = st.slider("% Parafínicos", 0, 100, 40)
-    olefinicos = st.slider("% Olefínicos", 0, 100, 5)
-    naftenicos = st.slider("% Nafténicos", 0, 100, 25)
-    aromaticos = st.slider("% Aromáticos", 0, 100, 30)
-    total_pona = parafinicos + olefinicos + naftenicos + aromaticos
+    pona_csv = st.file_uploader("📁 Cargar CSV de composición PONA (opcional)", type="csv")
 
-    if total_pona != 100:
-        st.warning(f"⚠️ La suma total es {total_pona}%. Debe ser exactamente 100%.")
+    if pona_csv:
+        df_pona = pd.read_csv(pona_csv)
+        try:
+            paraf, olef, naft, arom = df_pona.iloc[0]
+        except:
+            st.error("Error al leer el archivo. Asegurate que tenga columnas: Parafínicos, Olefínicos, Nafténicos, Aromáticos")
+            paraf = olef = naft = arom = 0
     else:
-        st.success("✅ Composición válida.")
+        paraf = st.slider("% Parafínicos", 0, 100, 40)
+        olef = st.slider("% Olefínicos", 0, 100, 5)
+        naft = st.slider("% Nafténicos", 0, 100, 25)
+        arom = st.slider("% Aromáticos", 0, 100, 30)
+
+    total_pona = paraf + olef + naft + arom
+    if total_pona != 100:
+        st.warning(f"⚠️ Suma total = {total_pona}%. Ajustá para llegar a 100%.")
+    else:
         fig, ax = plt.subplots()
-        labels = ["Parafínicos", "Olefínicos", "Nafténicos", "Aromáticos"]
-        values = [parafinicos, olefinicos, naftenicos, aromaticos]
-        ax.pie(values, labels=labels, autopct='%1.1f%%')
+        ax.pie([paraf, olef, naft, arom], labels=["Parafínicos", "Olefínicos", "Nafténicos", "Aromáticos"], autopct='%1.1f%%')
         ax.set_title("Distribución PONA")
         st.pyplot(fig)
+        st.session_state.pona = {"Parafínicos": paraf, "Olefínicos": olef, "Nafténicos": naft, "Aromáticos": arom}
 
-    st.session_state.pona = {
-        "Parafínicos": parafinicos,
-        "Olefínicos": olefinicos,
-        "Nafténicos": naftenicos,
-        "Aromáticos": aromaticos
-    }
-
-# --- TAB 4: PDF --- #
+# TAB 4 - EXPORTAR PDF
 with tabs[3]:
-    st.subheader("📄 Exportar informe profesional")
+    st.subheader("📄 Generar Informe Profesional en PDF")
 
     class PDF(FPDF):
         def header(self):
@@ -167,7 +189,7 @@ with tabs[3]:
                     self.multi_cell(0, 8, f"{k}: {v}%")
             self.ln(2)
 
-    if st.button("📥 Descargar informe en PDF"):
+    if st.button("📥 Descargar Informe PDF"):
         pdf = PDF()
         pdf.add_page()
         pdf.section("Factor de Watson", str(st.session_state.kw))
@@ -179,7 +201,7 @@ with tabs[3]:
         buffer.seek(0)
 
         st.download_button(
-            label="📄 Descargar Informe PDF",
+            label="📄 Descargar PDF",
             data=buffer,
             file_name="informe_crudo.pdf",
             mime="application/pdf"
