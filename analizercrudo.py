@@ -266,8 +266,8 @@ with tabs[3]:
         st.warning("📌 Cargá una curva TBP válida para calcular los rendimientos.")
 
 
-# TAB 4 – 📄 Generar Informe PDF Profesional
-with tabs[3]:
+# --- TAB 5: 📄 Generar Informe PDF Profesional ---
+with tabs[4]:
     st.subheader("📄 Generar Informe Técnico en PDF")
 
     import re
@@ -298,7 +298,7 @@ with tabs[3]:
                     self.multi_cell(0, 8, limpiar_emoji(f"{k}: {v}%"))
             elif isinstance(content, pd.DataFrame):
                 for _, row in content.iterrows():
-                    linea = f"{row['Fracción']}: {row['Volumen [%]']}% * ${row['Precio [USD/100 kg]']} = ${row['Ingreso Estimado [USD]']}"
+                    linea = " - ".join([f"{col}: {row[col]}" for col in row.index])
                     self.multi_cell(0, 8, limpiar_emoji(linea))
             self.ln(2)
 
@@ -318,20 +318,17 @@ with tabs[3]:
     else:
         tbp_img_path = None
 
-    # Botón para generar PDF
     if st.button("📥 Descargar Informe PDF"):
         try:
             pdf = PDF()
             pdf.add_page()
 
-            # Insertar imagen de curva TBP si existe
             if tbp_img_path and os.path.exists(tbp_img_path):
                 pdf.set_font("Arial", "B", 11)
                 pdf.cell(0, 10, "Curva TBP", 0, 1)
                 pdf.image(tbp_img_path, x=10, w=180)
                 pdf.ln(5)
 
-            # Secciones
             pdf.section("Factor de Watson / API", f"{st.session_state.kw} Watson, {st.session_state.api}° API")
             pdf.section("Clasificación del crudo", st.session_state.tipo_crudo)
 
@@ -341,7 +338,9 @@ with tabs[3]:
             if isinstance(st.session_state.pona, dict) and st.session_state.pona:
                 pdf.section("Composición PONA", st.session_state.pona)
 
-            # Convertir PDF en buffer descargable
+            if isinstance(st.session_state.get("rendimiento"), pd.DataFrame):
+                pdf.section("Rendimiento estimado por fracción", st.session_state.rendimiento)
+
             buffer = BytesIO()
             pdf_bytes = pdf.output(dest='S').encode('latin1')
             buffer.write(pdf_bytes)
@@ -357,8 +356,8 @@ with tabs[3]:
         except Exception as e:
             st.error(f"❌ Error al generar el PDF: {e}")
 
-        # Eliminar imagen temporal
         if tbp_img_path and os.path.exists(tbp_img_path):
             os.remove(tbp_img_path)
+
 
 
